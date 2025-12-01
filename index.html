@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Staff Schedule</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .save-btn {
+            background: #27ae60;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .save-btn.saved {
+            background: #95a5a6;
+            animation: none;
+        }
+
+        .header h1 {
+            font-size: 1.8em;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: #ecf0f1;
+            border-bottom: 2px solid #bdc3c7;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        select, button, input {
+            padding: 10px 15px;
+            font-size: 14px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        select:hover, input:hover {
+            border-color: #3498db;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        button.danger {
+            background: #e74c3c;
+        }
+
+        button.danger:hover {
+            background: #c0392b;
+        }
+
+        button.success {
+            background: #27ae60;
+        }
+
+        button.success:hover {
+            background: #229954;
+        }
+
+        .admin-section {
+            background: #fff9e6;
+            padding: 20px 30px;
+            border-bottom: 2px solid #f39c12;
+        }
+
+        .staff-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .staff-chip {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: 2px solid #3498db;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+            transition: all 0.2s;
+        }
+
+        .staff-chip:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .staff-chip.dragging {
+            opacity: 0.5;
+        }
+
+        .staff-chip span {
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .remove-x {
+            color: #e74c3c;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 5px;
+        }
+
+        .schedule-wrapper {
+            padding: 20px 30px;
+            overflow-x: auto;
+        }
+
+        .schedule-title {
+            text-align: center;
+            font-size: 1.5em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        /* Excel-like table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            box-shadow: 0 0 0 1px #d4d4d4;
+        }
+
+        th {
+            background: #f8f9fa;
+            color: #2c3e50;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 700;
+            border: 1px solid #d4d4d4;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 0;
+            border: 1px solid #d4d4d4;
+            background: white;
+            text-align: center;
+            position: relative;
+        }
+
+        td.date-col {
+            font-weight: 700;
+            background: #f8f9fa;
+            color: #2c3e50;
+            width: 50px;
+            font-size: 14px;
+        }
+
+        td.day-col {
+            background: #f8f9fa;
+            color: #555;
+            font-weight: 600;
+            width: 100px;
+        }
+
+        td.weekend {
+            background: #fff3e0;
+        }
+
+        .shift-cell {
+            padding: 10px 8px;
+            min-height: 45px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            font-weight: 500;
+        }
+
+        .shift-cell:hover {
+            background: #e3f2fd !important;
+        }
+
+        .shift-cell.has-assignment {
+            background: #e8f5e9;
+        }
+
+        .shift-cell.empty {
+            background: #ffebee;
+            color: #999;
+            font-style: italic;
+            font-size: 11px;
+        }
+
+        .shift-cell.editable:hover::before {
+            content: '✏️';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 10px;
+        }
+
+        .shift-cell.drag-over {
+            background: #c8e6c9 !important;
+            border: 2px dashed #4caf50;
+        }
+
+        .shift-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            padding: 5px;
+        }
+
+        .staff-name-badge {
+            background: #e3f2fd;
+            padding: 6px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin: 2px;
+            max-width: 100%;
+            word-break: break-word;
+        }
+
+        .staff-name-badge.day-shift {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .staff-name-badge.night-shift {
+            background: #e3f2fd;
+            color: #0d47a1;
+        }
+
+        .remove-badge {
+            color: #e74c3c;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-weight: bold;
+        }
+
+        .staff-name-badge:hover .remove-badge {
+            opacity: 1;
+        }
+
+        .add-person-btn {
+            color: #4caf50;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            margin-top: 3px;
+        }
+
+        .shift-cell:hover .add-person-btn {
+            opacity: 1;
+        }
+
+        .day-shift {
+            color: #f57c00;
+        }
+
+        .night-shift {
+            color: #1976d2;
+        }
+
+        tr:nth-child(even) td:not(.date-col):not(.day-col) {
+            background: #fafafa;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-body select {
+            width: 100%;
+            margin: 15px 0;
+            padding: 12px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .login-form {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .success-msg {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px 20px;
+            border-radius: 4px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .add-staff-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .add-staff-form input {
+            flex-grow: 1;
+        }
+
+        .edit-mode-banner {
+            background: #27ae60;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+
+        .edit-mode-banner.active {
+            display: block;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .container {
+                box-shadow: none;
+            }
+
+            .controls, .admin-section, button, .edit-mode-banner, .remove-assignment {
+                display: none !important;
+            }
+
+            .header {
+                background: white;
+                color: black;
+                border-bottom: 2px solid black;
+            }
+
+            .shift-cell:hover::before {
+                display: none;
+            }
+
+            table {
+                page-break-inside: avoid;
+            }
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 15px;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-box {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #d4d4d4;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Hospital Staff Schedule</h1>
+            <div class="header-buttons">
+                <button class="save-btn" id="saveBtn" onclick="manualSave()">💾 Save Changes</button>
+                <button onclick="window.print()">🖨️ Print</button>
+                <button onclick="toggleAdmin()">🔐 Admin</button>
+            </div>
+        </div>
+
+        <div class="edit-mode-banner" id="editModeBanner">
+            ✏️ EDIT MODE - Click any cell to assign staff or drag staff members to cells • Hover and click ❌ to remove assignments
+        </div>
+
+        <div class="controls">
+            <label><strong>Month:</strong></label>
+            <select id="monthSelect">
+                <option value="0">January</option>
+                <option value="1">February</option>
+                <option value="2">March</option>
+                <option value="3">April</option>
+                <option value="4">May</option>
+                <option value="5">June</option>
+                <option value="6">July</option>
+                <option value="7">August</option>
+                <option value="8">September</option>
+                <option value="9">October</option>
+                <option value="10">November</option>
+                <option value="11">December</option>
+            </select>
+
+            <label><strong>Year:</strong></label>
+            <select id="yearSelect"></select>
+
+            <button onclick="loadSchedule()">📅 Load Schedule</button>
+            <button class="success" onclick="autoFillSchedule()">⚡ Auto-Fill Empty Cells</button>
+            <button class="danger" onclick="clearAllSchedule()">🗑️ Clear All</button>
+        </div>
+
+        <div id="loginSection" class="login-form hidden">
+            <h3>Admin Login</h3>
+            <input type="password" id="adminPassword" placeholder="Enter password (admin123)">
+            <button onclick="adminLogin()">Login</button>
+        </div>
+
+        <div id="adminSection" class="admin-section hidden">
+            <h3>👥 Staff Management</h3>
+            <div id="successMsg" class="success-msg hidden"></div>
+            
+            <div class="add-staff-form">
+                <input type="text" id="newStaffName" placeholder="Add new staff member">
+                <button class="success" onclick="addStaff()">➕ Add</button>
+            </div>
+
+            <div class="staff-grid" id="staffList"></div>
+        </div>
+
+        <div class="schedule-wrapper">
+            <h2 class="schedule-title" id="scheduleTitle">Select Month and Year</h2>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #e8f5e9;"></div>
+                    <span>Assigned</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #ffebee;"></div>
+                    <span>Empty</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #fff3e0;"></div>
+                    <span>Weekend</span>
+                </div>
+            </div>
+
+            <div id="scheduleTable"></div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="editShiftInfo">Edit Shift Assignment</h3>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 10px;"><strong>Add staff member to this shift:</strong></p>
+                <select id="staffSelectModal" size="8"></select>
+                <p style="margin-top: 10px; font-size: 12px; color: #666;">💡 You can add multiple people to the same shift</p>
+            </div>
+            <div class="modal-buttons">
+                <button onclick="closeEditModal()">Close</button>
+                <button class="success" onclick="saveShiftEdit()">Add Person</button>
+                <button class="danger" onclick="clearShiftEdit()">Clear All</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let staffMembers = [
+            'SHELBY ASH RN - FT',
+            'HEATHER WHITE RN TC(A)',
+            'MONICA ICEDO RN TC (A)',
+            'CARMEN MOLOGNE RN TC (A)',
+            'AMBER PRYOR RN PRN TC (A)',
+            'JESSICA GARCIA RN - FT',
+            'MADISON RAMIREZ RN IC',
+            'MARTI CRAWSHAW RN TC(P)',
+            'BROOKE SIEMS RN - FT',
+            'APRIL CHANDLER RN TC (P)',
+            'CHARLOTTE MARTIN RN TC(P)',
+            'CHERIE MACALLISTER RN-FT',
+            'DENISE BEAN RN PRN',
+            'SARAH COOK RN PRN',
+            'CHRISTINA CHARGOIS RN PRN',
+            'CORIE CULP RN - PRN',
+            'BAYLEE EDWARDS RN PRN',
+            'DIANE BRAY RN PRN',
+            'JEANNIE OLSON RN PRN(A)',
+            'BRIANA SOLIS LVN - FT (A)',
+            'RAYNE SCRANTON LVN-FT (A)',
+            'TELICIA FOSTER LVN - FT (P)',
+            'BRITTANY COCKRELL LVN - FT(P)',
+            'AMANDA SHOEMAKER RN - PRN',
+            'NIKOLE NAKAO RN - PRN',
+            'LIZZY JACOBO RN LDRP PRN',
+            'SHAKILAH BOOKER RN - LDRP(A)',
+            'KRISTEN BAYHAM RN FT LDRP (P)',
+            'KENDALL FLORENCE RN FT LDRP (A)',
+            'KRISTENRODRIGUEZ RN FT LDRP (A)'
+        ];
+
+        let isAdmin = false;
+        let scheduleData = {};
+        let currentEditCell = null;
+        let hasUnsavedChanges = false;
+
+        // Mark that changes need saving
+        function markUnsaved() {
+            hasUnsavedChanges = true;
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.textContent = '💾 Save Changes *';
+            saveBtn.classList.remove('saved');
+        }
+
+        // Manual save function
+        function manualSave() {
+            saveData();
+            hasUnsavedChanges = false;
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.textContent = '✅ Saved!';
+            saveBtn.classList.add('saved');
+            showSuccess('All changes saved successfully!');
+            
+            setTimeout(() => {
+                saveBtn.textContent = '💾 Save Changes';
+            }, 2000);
+        }
+
+        // Load saved data from localStorage
+        function loadSavedData() {
+            const savedStaff = localStorage.getItem('hospitalStaff');
+            const savedSchedule = localStorage.getItem('hospitalSchedule');
+            
+            if (savedStaff) {
+                try {
+                    const parsed = JSON.parse(savedStaff);
+                    // Only use saved staff if it's not empty
+                    if (parsed && parsed.length > 0) {
+                        staffMembers = parsed;
+                    }
+                } catch(e) {
+                    console.error('Error loading staff data');
+                }
+            }
+            
+            if (savedSchedule) {
+                try {
+                    scheduleData = JSON.parse(savedSchedule);
+                    // Ensure all schedule entries are arrays
+                    Object.keys(scheduleData).forEach(key => {
+                        if (!Array.isArray(scheduleData[key])) {
+                            // Convert old single-person format to array
+                            scheduleData[key] = [scheduleData[key]];
+                        }
+                    });
+                } catch(e) {
+                    console.error('Error loading schedule data');
+                }
+            }
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            try {
+                localStorage.setItem('hospitalStaff', JSON.stringify(staffMembers));
+                localStorage.setItem('hospitalSchedule', JSON.stringify(scheduleData));
+            } catch(e) {
+                console.error('Error saving data');
+            }
+        }
+
+        function initYearDropdown() {
+            const yearSelect = document.getElementById('yearSelect');
+            const currentYear = new Date().getFullYear();
+            
+            for (let year = currentYear - 1; year <= currentYear + 5; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (year === currentYear) option.selected = true;
+                yearSelect.appendChild(option);
+            }
+        }
+
+        function setCurrentMonth() {
+            const monthSelect = document.getElementById('monthSelect');
+            monthSelect.value = new Date().getMonth();
+        }
+
+        function loadSchedule() {
+            const month = parseInt(document.getElementById('monthSelect').value);
+            const year = parseInt(document.getElementById('yearSelect').value);
+            
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                              'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            document.getElementById('scheduleTitle').textContent = 
+                `${monthNames[month]} ${year}`;
+
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            let html = '<table><thead><tr>';
+            html += '<th style="width: 50px;">Date</th>';
+            html += '<th style="width: 100px;">Day</th>';
+            html += '<th>Day Shift<br><span style="font-weight: normal; font-size: 10px;">7AM - 7PM</span></th>';
+            html += '<th>Night Shift<br><span style="font-weight: normal; font-size: 10px;">7PM - 7AM</span></th>';
+            html += '</tr></thead><tbody>';
+
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dayName = dayNames[date.getDay()];
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                
+                html += '<tr>';
+                html += `<td class="date-col">${day}</td>`;
+                html += `<td class="day-col ${isWeekend ? 'weekend' : ''}">${dayName}</td>`;
+                
+                [0, 1].forEach(shiftIndex => {
+                    const key = `${year}-${month}-${day}-${shiftIndex}`;
+                    const staffList = scheduleData[key] || [];
+                    
+                    const shiftClass = shiftIndex === 0 ? 'day-shift' : 'night-shift';
+                    const editClass = isAdmin ? 'editable' : '';
+                    const hasAssignment = staffList.length > 0 ? 'has-assignment' : 'empty';
+                    
+                    const onclick = isAdmin ? `onclick="openEditModal('${key}', ${day}, '${shiftIndex === 0 ? 'Day' : 'Night'}')"` : '';
+                    const dropHandlers = isAdmin ? `ondrop="handleDrop(event, '${key}')" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)"` : '';
+                    
+                    let staffHTML = '';
+                    if (staffList.length > 0) {
+                        staffHTML = staffList.map((staff, idx) => 
+                            `<span class="staff-name-badge ${shiftClass}">
+                                ${staff}
+                                ${isAdmin ? `<span class="remove-badge" onclick="event.stopPropagation(); removeSinglePerson('${key}', ${idx})">✕</span>` : ''}
+                            </span>`
+                        ).join('');
+                    } else {
+                        staffHTML = `<span style="color: #999; font-style: italic; font-size: 11px;">Empty</span>`;
+                    }
+                    
+                    html += `<td ${dropHandlers}>
+                        <div class="shift-cell ${editClass} ${hasAssignment}" ${onclick}>
+                            <div class="shift-content">
+                                ${staffHTML}
+                                ${isAdmin ? `<div class="add-person-btn" onclick="event.stopPropagation(); openEditModal('${key}', ${day}, '${shiftIndex === 0 ? 'Day' : 'Night'}')">➕</div>` : ''}
+                            </div>
+                        </div>
+                    </td>`;
+                });
+                
+                html += '</tr>';
+            }
+
+            html += '</tbody></table>';
+            document.getElementById('scheduleTable').innerHTML = html;
+        }
+
+        function removeSinglePerson(key, index) {
+            if (confirm('Remove this person from this shift?')) {
+                const staffList = scheduleData[key] || [];
+                staffList.splice(index, 1);
+                
+                if (staffList.length === 0) {
+                    delete scheduleData[key];
+                } else {
+                    scheduleData[key] = staffList;
+                }
+                
+                markUnsaved();
+                loadSchedule();
+                showSuccess('Person removed! Click Save to keep changes.');
+            }
+        }
+
+        function removeAssignment(key) {
+            if (confirm('Remove ALL people from this shift?')) {
+                delete scheduleData[key];
+                markUnsaved();
+                loadSchedule();
+                showSuccess('All assignments removed! Click Save to keep changes.');
+            }
+        }
+
+        function autoFillSchedule() {
+            if (!isAdmin) return;
+            
+            const month = parseInt(document.getElementById('monthSelect').value);
+            const year = parseInt(document.getElementById('yearSelect').value);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            let staffIndex = 0;
+            let filled = 0;
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                [0, 1].forEach(shiftIndex => {
+                    const key = `${year}-${month}-${day}-${shiftIndex}`;
+                    const staffList = scheduleData[key] || [];
+                    
+                    if (staffList.length === 0) {
+                        scheduleData[key] = [staffMembers[staffIndex % staffMembers.length]];
+                        staffIndex++;
+                        filled++;
+                    }
+                });
+            }
+            
+            markUnsaved();
+            loadSchedule();
+            showSuccess(`Auto-filled ${filled} empty shifts! Click Save to keep changes.`);
+        }
+
+        function clearAllSchedule() {
+            if (!isAdmin) return;
+            
+            if (confirm('Clear ALL schedule assignments? This cannot be undone!')) {
+                scheduleData = {};
+                markUnsaved();
+                loadSchedule();
+                showSuccess('All assignments cleared! Click Save to keep changes.');
+            }
+        }
+
+        function openEditModal(key, day, shift) {
+            if (!isAdmin) return;
+            
+            currentEditCell = key;
+            document.getElementById('editShiftInfo').textContent = `Day ${day} - ${shift} Shift`;
+            
+            const select = document.getElementById('staffSelectModal');
+            select.innerHTML = '<option value="">-- Select staff to add --</option>';
+            
+            const currentStaff = scheduleData[key] || [];
+            
+            staffMembers.forEach(staff => {
+                const option = document.createElement('option');
+                option.value = staff;
+                option.textContent = currentStaff.includes(staff) ? `${staff} ✓ (Already assigned)` : staff;
+                select.appendChild(option);
+            });
+            
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            currentEditCell = null;
+        }
+
+        function saveShiftEdit() {
+            const select = document.getElementById('staffSelectModal');
+            const selectedStaff = select.value;
+            
+            if (!selectedStaff) {
+                alert('Please select a staff member');
+                return;
+            }
+            
+            // Initialize as array if it doesn't exist
+            if (!scheduleData[currentEditCell]) {
+                scheduleData[currentEditCell] = [];
+            }
+            
+            const currentStaff = scheduleData[currentEditCell];
+            
+            if (currentStaff.includes(selectedStaff)) {
+                alert('This person is already assigned to this shift!');
+                return;
+            }
+            
+            currentStaff.push(selectedStaff);
+            scheduleData[currentEditCell] = currentStaff;
+            
+            markUnsaved();
+            loadSchedule();
+            showSuccess(`${selectedStaff} added! Click Save to keep changes.`);
+            
+            // Keep modal open and refresh the dropdown to show updated status
+            openEditModal(currentEditCell, currentEditCell.split('-')[2], currentEditCell.split('-')[3] === '0' ? 'Day' : 'Night');
+        }
+
+        function clearShiftEdit() {
+            if (confirm('Remove ALL people from this shift?')) {
+                delete scheduleData[currentEditCell];
+                markUnsaved();
+                closeEditModal();
+                loadSchedule();
+                showSuccess('All assignments cleared! Click Save to keep changes.');
+            }
+        }
+
+        let draggedStaff = null;
+
+        function handleDragStart(e, staff) {
+            draggedStaff = staff;
+            e.target.classList.add('dragging');
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            draggedStaff = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.querySelector('.shift-cell').classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.querySelector('.shift-cell')?.classList.remove('drag-over');
+        }
+
+        function handleDrop(e, key) {
+            e.preventDefault();
+            e.currentTarget.querySelector('.shift-cell').classList.remove('drag-over');
+            
+            if (draggedStaff) {
+                const currentStaff = scheduleData[key] || [];
+                
+                if (currentStaff.includes(draggedStaff)) {
+                    showSuccess(`${draggedStaff} is already assigned to this shift!`);
+                    return;
+                }
+                
+                currentStaff.push(draggedStaff);
+                scheduleData[key] = currentStaff;
+                
+                markUnsaved();
+                loadSchedule();
+                showSuccess(`${draggedStaff} assigned! Click Save to keep changes.`);
+            }
+        }
+
+        function toggleAdmin() {
+            const loginSection = document.getElementById('loginSection');
+            if (isAdmin) {
+                isAdmin = false;
+                document.getElementById('adminSection').classList.add('hidden');
+                document.getElementById('editModeBanner').classList.remove('active');
+                alert('Logged out');
+                loadSchedule();
+            } else {
+                loginSection.classList.toggle('hidden');
+            }
+        }
+
+        function adminLogin() {
+            const password = document.getElementById('adminPassword').value;
+            if (password === 'admin123') {
+                isAdmin = true;
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('adminSection').classList.remove('hidden');
+                document.getElementById('editModeBanner').classList.add('active');
+                document.getElementById('adminPassword').value = '';
+                displayStaffList();
+                loadSchedule();
+                showSuccess('Admin mode activated!');
+            } else {
+                alert('Incorrect password');
+            }
+        }
+
+        function displayStaffList() {
+            const staffList = document.getElementById('staffList');
+            staffList.innerHTML = '';
+            
+            staffMembers.forEach((staff, index) => {
+                const div = document.createElement('div');
+                div.className = 'staff-chip';
+                div.draggable = true;
+                div.ondragstart = (e) => handleDragStart(e, staff);
+                div.ondragend = handleDragEnd;
+                div.innerHTML = `
+                    <span onclick="editStaff(${index})">${staff}</span>
+                    <span class="remove-x" onclick="removeStaff(${index})">✕</span>
+                `;
+                staffList.appendChild(div);
+            });
+        }
+
+        function addStaff() {
+            const name = document.getElementById('newStaffName').value.trim();
+            if (name) {
+                staffMembers.push(name);
+                document.getElementById('newStaffName').value = '';
+                markUnsaved();
+                displayStaffList();
+                showSuccess(`${name} added! Click Save to keep changes.`);
+            } else {
+                alert('Enter a name');
+            }
+        }
+
+        function editStaff(index) {
+            const newName = prompt('Enter new name:', staffMembers[index]);
+            if (newName && newName.trim()) {
+                const oldName = staffMembers[index];
+                
+                Object.keys(scheduleData).forEach(key => {
+                    const staffList = scheduleData[key] || [];
+                    const idx = staffList.indexOf(oldName);
+                    if (idx !== -1) {
+                        staffList[idx] = newName.trim();
+                        scheduleData[key] = staffList;
+                    }
+                });
+                
+                staffMembers[index] = newName.trim();
+                markUnsaved();
+                displayStaffList();
+                showSuccess(`Updated to ${newName}. Click Save to keep changes.`);
+                loadSchedule();
+            }
+        }
+
+        function removeStaff(index) {
+            if (confirm(`Remove ${staffMembers[index]}?`)) {
+                const removed = staffMembers[index];
+                
+                Object.keys(scheduleData).forEach(key => {
+                    const staffList = scheduleData[key] || [];
+                    const idx = staffList.indexOf(removed);
+                    if (idx !== -1) {
+                        staffList.splice(idx, 1);
+                        if (staffList.length === 0) {
+                            delete scheduleData[key];
+                        } else {
+                            scheduleData[key] = staffList;
+                        }
+                    }
+                });
+                
+                staffMembers.splice(index, 1);
+                markUnsaved();
+                displayStaffList();
+                showSuccess(`${removed} removed! Click Save to keep changes.`);
+                loadSchedule();
+            }
+        }
+
+        function showSuccess(message) {
+            const msgDiv = document.getElementById('successMsg');
+            msgDiv.textContent = message;
+            msgDiv.classList.remove('hidden');
+            setTimeout(() => {
+                msgDiv.classList.add('hidden');
+            }, 3000);
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                closeEditModal();
+            }
+        }
+
+        window.onload = function() {
+            loadSavedData();
+            initYearDropdown();
+            setCurrentMonth();
+            loadSchedule();
+        };
+    </script>
+</body>
+</html>
